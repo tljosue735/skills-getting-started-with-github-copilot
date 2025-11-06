@@ -23,21 +23,14 @@ document.addEventListener("DOMContentLoaded", () => {
         // Create participants list HTML
         let participantsHtml = '';
         if (details.participants.length > 0) {
-          const participantsList = details.participants.map(email => `<li>${email}</li>`).join('');
+          const participantsList = details.participants.map(email => `
+            <div class=\"participant-row\">\n              <span class=\"participant-email\">${email}</span>\n              <span class=\"delete-icon\" title=\"Unregister\" data-activity=\"${name}\" data-email=\"${email}\">&#128465;</span>\n            </div>
+          `).join('');
           participantsHtml = `
-            <div class="participants-section">
-              <p><strong>Current Participants:</strong></p>
-              <ul class="participants-list">
-                ${participantsList}
-              </ul>
-            </div>
-          `;
+            <div class=\"participants-section\">\n              <p><strong>Current Participants:</strong></p>\n              <div class=\"participants-list\">\n                ${participantsList}\n              </div>\n            </div>\n          `;
         } else {
           participantsHtml = `
-            <div class="participants-section">
-              <p><strong>Current Participants:</strong> No participants yet</p>
-            </div>
-          `;
+            <div class=\"participants-section\">\n              <p><strong>Current Participants:</strong> No participants yet</p>\n            </div>\n          `;
         }
 
         activityCard.innerHTML = `
@@ -83,6 +76,7 @@ document.addEventListener("DOMContentLoaded", () => {
         messageDiv.textContent = result.message;
         messageDiv.className = "success";
         signupForm.reset();
+        fetchActivities(); // Refresh activities list
       } else {
         messageDiv.textContent = result.detail || "An error occurred";
         messageDiv.className = "error";
@@ -104,4 +98,39 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Initialize app
   fetchActivities();
+
+  // Delegate click event for delete icons
+  activitiesList.addEventListener("click", async (event) => {
+    if (event.target.classList.contains("delete-icon")) {
+      const activity = event.target.getAttribute("data-activity");
+      const email = event.target.getAttribute("data-email");
+      if (!activity || !email) return;
+      try {
+        const response = await fetch(
+          `/activities/${encodeURIComponent(activity)}/unregister?email=${encodeURIComponent(email)}`,
+          {
+            method: "POST",
+          }
+        );
+        const result = await response.json();
+        if (response.ok) {
+          messageDiv.textContent = result.message;
+          messageDiv.className = "success";
+          fetchActivities(); // Refresh list
+        } else {
+          messageDiv.textContent = result.detail || "An error occurred";
+          messageDiv.className = "error";
+        }
+        messageDiv.classList.remove("hidden");
+        setTimeout(() => {
+          messageDiv.classList.add("hidden");
+        }, 5000);
+      } catch (error) {
+        messageDiv.textContent = "Failed to unregister. Please try again.";
+        messageDiv.className = "error";
+        messageDiv.classList.remove("hidden");
+        console.error("Error unregistering:", error);
+      }
+    }
+  });
 });
